@@ -159,7 +159,8 @@ def multicore_handler(reference_list: list, segment_index: int):
 # Autoeneable: bool allows for no prompts and defaults to max core usage
 # Maxcores: int allows for automation of set number of cores to be used
 # Buffercores: int allows for an allocation of unused cores (default 1)
-def enable_multicore(autoenable=False, maxcores=None, buffercores=1):
+def enable_multicore(autoenable=False, maxcores=None, buffercores=1, 
+                     multicore_query="N", core_count_query=0):
     native_cpu_count = multiprocessing.cpu_count() - buffercores
     if autoenable:
         if maxcores:
@@ -169,10 +170,10 @@ def enable_multicore(autoenable=False, maxcores=None, buffercores=1):
                 print("Too many cores requested, single core operation fallback")
                 return 1
         return multiprocessing.cpu_count() - 1
-    multicore_query = input("Enable multiprocessing (Y or N): ")
+    # multicore_query = input("Enable multiprocessing (Y or N): ")
     if multicore_query not in ["Y","y","Yes","YES","YEs",'yes']:
         return 1
-    core_count_query = int(input("Max core count (0 for allcores): "))
+    # core_count_query = int(input("Max core count (0 for allcores): "))
     if(core_count_query == 0):
         return native_cpu_count
     if(core_count_query <= native_cpu_count):
@@ -206,7 +207,13 @@ if __name__ == "__main__":
         if playlist_uri.find("https://open.spotify.com/playlist/") != -1:
             playlist_uri = playlist_uri.replace("https://open.spotify.com/playlist/", "")
             
-        multicore_support = enable_multicore(autoenable=False, maxcores=None, buffercores=1)
+        multicore_support = enable_multicore(autoenable=False,
+                                             maxcores=None,
+                                             buffercores=1, 
+                                             multicore_query=config['multicore_query'], 
+                                             core_count_query=config['core_count_query']
+                                             )
+        
         auth_manager = oauth2.SpotifyClientCredentials(client_id=config['client_id'], client_secret=config['client_secret'])
         spotify = spotipy.Spotify(auth_manager=auth_manager)
         playlist_name = write_playlist(config['username'], playlist_uri)
