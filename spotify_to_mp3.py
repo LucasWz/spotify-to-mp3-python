@@ -2,11 +2,13 @@
 # Jason Chen, 21 June 2020
 
 import os
+from typing import Any, Dict, Optional
 import spotipy
 import spotipy.oauth2 as oauth2
 import yt_dlp
 from youtube_search import YoutubeSearch
 import multiprocessing
+import yaml
 
 # **************PLEASE READ THE README.md FOR USE INSTRUCTIONS**************
 
@@ -147,15 +149,9 @@ def multicore_handler(reference_list: list, segment_index: int):
     
     # Write the reference_list to a new "reference_file" to enable compatibility
     with open(reference_filename, 'w+', encoding='utf-8') as file_out:
-        for line in reference_list:
-            file_out.write(line)
-
-    # Call the original find_and_download method
-    find_and_download_songs(reference_filename)    
-
-    # Clean up the extra list that was generated
-    if(os.path.exists(reference_filename)):
-        os.remove(reference_filename)
+        for line in reference_list: 
+            if(os.path.exists(reference_filename)):
+                os.remove(reference_filename)
 
 
 # This is prompt to handle the multicore queries
@@ -184,29 +180,47 @@ def enable_multicore(autoenable=False, maxcores=None, buffercores=1):
     else:
         print("Too many cores requested, single core operation fallback")
         return 1
+    
+def load_config(path) -> Optional[Dict[str,Any]]:
+    with open(path, "r") as stream:
+        try:
+            return yaml.safe_load(stream)
+        except yaml.YAMLError as exc:
+            print(exc)
+            
 
 if __name__ == "__main__":
     # Parameters
-    print("Please read README.md for use instructions.")    
-    client_id = input("Client ID: ")
-    client_secret = input("Client secret: ")
-    username = input("Spotify username: ")
-    playlist_uri = input("Playlist URI/Link: ")
-    if playlist_uri.find("https://open.spotify.com/playlist/") != -1:
-        playlist_uri = playlist_uri.replace("https://open.spotify.com/playlist/", "")
-    multicore_support = enable_multicore(autoenable=False, maxcores=None, buffercores=1)
-    auth_manager = oauth2.SpotifyClientCredentials(client_id=client_id, client_secret=client_secret)
-    spotify = spotipy.Spotify(auth_manager=auth_manager)
-    playlist_name = write_playlist(username, playlist_uri)
-    reference_file = "{}.txt".format(playlist_name)
-    # Create the playlist folder
-    if not os.path.exists(playlist_name):
-        os.makedirs(playlist_name)
-    os.rename(reference_file, playlist_name + "/" + reference_file)
-    os.chdir(playlist_name)
-    # Enable multicore support
-    if multicore_support > 1:
-        multicore_find_and_download_songs(reference_file, multicore_support)
-    else:
-        find_and_download_songs(reference_file)
-    print("Operation complete.")
+    # print("Please read README.md for use instructions.")    
+    # client_id = input("Client ID: ")
+    # client_secret = input("Client secret: ")
+    # username = input("Spotify username: ")
+    # playlist_uri = input("Playlist URI/Link: ")
+    
+    # Parameters
+    CONFIG_PATH = "config.yml"
+    config = load_config(CONFIG_PATH)
+
+    for playlist_uri in config['playlists']:
+        
+        if playlist_uri.find("https://open.spotify.com/playlist/") != -1:
+            playlist_uri = playlist_uri.replace("https://open.spotify.com/playlist/", "")
+            
+        multicore_support = enable_multicore(autoenable=False, maxcores=None, buffercores=1)
+        auth_manager = oauth2.SpotifyClientCredentials(client_id=config['client_id'], client_secret=config['client_secret'])
+        spotify = spotipy.Spotify(auth_manager=auth_manager)
+        playlist_name = write_playlist(config['username'], playlist_uri)
+        reference_file = "{}.txt".format(playlist_name)
+        # Create the playlist folder
+        if not os.path.exists(playlist_name):
+            os.makedirs(playlist_name)
+        os.rename(reference_file, playlist_name + "/" + reference_file)
+        os.chdir(playlist_name)
+        # Enable multicore support
+        if multicore_support > 1:
+            multicore_find_and_download_songs(reference_file, multicore_support)
+        else:
+            find_and_download_songs(reference_file)
+        print("Playlist complete.")
+        
+    print("All playlists complete.")
